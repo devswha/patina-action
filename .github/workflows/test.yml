@@ -19,3 +19,8 @@ jobs:
         run: node --check scripts/score.mjs
       - name: Score script smoke test
         run: node test/score-smoke.mjs
+      - name: NPM-backed score smoke test
+        run: |
+          tmp=$(mktemp -d)
+          printf 'plain human prose with a small rough edge.\n' > "$tmp/ok.md"
+          (cd "$tmp" && INPUT_FILES='["ok.md"]' INPUT_REPORT_THRESHOLD=30 INPUT_MAX_FILES=10 INPUT_LANG=auto node "$GITHUB_WORKSPACE/scripts/score.mjs")
