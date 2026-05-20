@@ -1,0 +1,121 @@
+name: patina-action
+description: Score changed Markdown prose with Patina and leave a sticky PR comment.
+branding:
+  icon: edit-3
+  color: green
+
+inputs:
+  github-token:
+    description: GitHub token used by paths-filter and PR comments.
+    required: false
+    default: ''
+  files:
+    description: Optional newline-, comma-, or JSON-array file list. Defaults to changed PR Markdown files.
+    required: false
+    default: ''
+  lang:
+    description: Language hint passed to patina-score: auto, ko, en, zh, or ja.
+    required: false
+    default: auto
+  score-threshold:
+    description: Optional hot-paragraph percentage threshold. When set, the action fails above this value.
+    required: false
+    default: ''
+  report-threshold:
+    description: Hot-paragraph percentage shown in the report when score-threshold is unset.
+    required: false
+    default: '30'
+  max-files:
+    description: Maximum changed Markdown files to score.
+    required: false
+    default: '50'
+  comment:
+    description: Create or update a sticky PR comment.
+    required: false
+    default: 'true'
+  patina-package:
+    description: npm package spec used by npx.
+    required: false
+    default: patina-cli@latest
+  patina-bin:
+    description: Optional local patina-score executable for tests or self-hosted runners.
+    required: false
+    default: ''
+
+outputs:
+  file-count:
+    description: Number of Markdown files scored.
+    value: ${{ steps.score.outputs.file-count }}
+  failed-count:
+    description: Number of scored files above the active threshold.
+    value: ${{ steps.score.outputs.failed-count }}
+  max-score:
+    description: Highest score percentage across scored files.
+    value: ${{ steps.score.outputs.max-score }}
+  threshold-failed:
+    description: true when score-threshold was set and at least one file exceeded it.
+    value: ${{ steps.score.outputs.threshold-failed }}
+  comment-body-path:
+    description: Path to the generated sticky-comment body.
+    value: ${{ steps.score.outputs.comment-body-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: 20
+
+    - name: Detect changed Markdown files
+      id: changes
+      if: ${{ inputs.files == '' }}
+      uses: dorny/paths-filter@v4
+      with:
+        token: ${{ inputs.github-token || github.token }}
+        list-files: json
+        filters: |
+          markdown:
+            - '**/*.md'
+            - '**/*.mdx'
+
+    - name: Score changed prose
+      id: score
+      shell: bash
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_LANG: ${{ inputs.lang }}
+        INPUT_SCORE_THRESHOLD: ${{ inputs.score-threshold }}
+        INPUT_REPORT_THRESHOLD: ${{ inputs.report-threshold }}
+        INPUT_MAX_FILES: ${{ inputs.max-files }}
+        INPUT_PATINA_PACKAGE: ${{ inputs.patina-package }}
+        INPUT_PATINA_BIN: ${{ inputs.patina-bin }}
+        PATINA_CHANGED_FILES_JSON: ${{ steps.changes.outputs.markdown_files }}
+      run: node "${{ github.action_path }}/scripts/score.mjs"
+
+    - name: Find existing Patina comment
+      id: find-comment
+      if: ${{ inputs.comment == 'true' && github.event.pull_request.number != '' }}
+      uses: peter-evans/find-comment@v4
+      with:
+        token: ${{ inputs.github-token || github.token }}
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: github-actions[bot]
+        body-includes: '<!-- patina-pr-score -->'
+
+    - name: Create or update Patina comment
+      if: ${{ inputs.comment == 'true' && github.event.pull_request.number != '' }}
+      uses: peter-evans/create-or-update-comment@v5
+      with:
+        token: ${{ inputs.github-token || github.token }}
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-id: ${{ steps.find-comment.outputs.comment-id }}
+        edit-mode: replace
+        body-path: ${{ steps.score.outputs.comment-body-path }}
+
+    - name: Enforce score threshold
+      if: ${{ steps.score.outputs.threshold-failed == 'true' }}
+      shell: bash
+      run: |
+        echo "patina-action: ${{ steps.score.outputs.failed-count }} file(s) exceeded score-threshold."
+        exit 1
