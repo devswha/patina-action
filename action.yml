@@ -1,7 +1,7 @@
 name: Patina Prose Score
 description: Score changed Markdown prose with Patina and leave a sticky PR comment.
 branding:
-  icon: edit-3
+  icon: feather
   color: green
 
 inputs:
