@@ -6,7 +6,7 @@
 
 GitHub Action for Patina prose hotspot scoring. It checks Markdown changed in a pull request, writes a sticky review comment, and can fail the job when a file crosses your score threshold.
 
-> Release note: the default package source is `patina-cli@latest`. The v1 tag should be cut after `patina-cli` is published to npm.
+> Release note: the default package source is `patina-cli@latest`. The v1 tag should be cut after `patina-cli` is published to npm. Until then, test with `patina-package: github:devswha/patina`.
 
 ## Usage
 
@@ -33,6 +33,12 @@ jobs:
         with:
           score-threshold: 30
           comment: true
+
+      # Pre-v1 testing only, before patina-cli is on npm:
+      # - uses: devswha/patina-action@main
+      #   with:
+      #     patina-package: github:devswha/patina
+      #     score-threshold: 30
 ```
 
 The Action uses `dorny/paths-filter@v4` to find changed Markdown files, runs the `patina-score` binary from `npx -p patina-cli@latest`, and updates a sticky PR comment via `peter-evans/create-or-update-comment@v5`.
