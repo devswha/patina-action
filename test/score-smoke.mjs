@@ -32,4 +32,12 @@ const outputs = await import('node:fs').then((fs) => fs.readFileSync(output, 'ut
 assert.match(outputs, /file-count=2/);
 assert.match(outputs, /failed-count=1/);
 assert.match(outputs, /max-score=45\.0/);
+const badgeMatch = outputs.match(/^badge-json=(.+)$/m);
+assert.ok(badgeMatch, outputs);
+assert.deepEqual(JSON.parse(badgeMatch[1]), {
+  schemaVersion: 1,
+  label: 'patina',
+  message: '45% · mixed',
+  color: 'yellow',
+});
 assert.match(outputs, /threshold-failed=true/);

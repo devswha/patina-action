@@ -35,6 +35,9 @@ jobs:
         with:
           score-threshold: 30
           comment: true
+          # Optional: publish patina-badge.json for a Shields.io README badge.
+          # Requires permissions.contents: write.
+          # badge-branch: patina-badge
 ```
 
 ## What you get
@@ -52,6 +55,7 @@ A sticky PR comment with a per-file table — paragraphs, hot paragraphs, and sc
 | `report-threshold` | `30` | Advisory report gate when `score-threshold` is unset. |
 | `max-files` | `50` | Maximum Markdown files to score. |
 | `comment` | `true` | Create or update a sticky PR comment. |
+| `badge-branch` | unset | Optional branch where `patina-badge.json` is published for Shields.io endpoint badges. |
 | `patina-package` | `patina-cli@latest` | npm package spec used by `npx`. |
 | `patina-bin` | unset | Local `patina-score` executable for tests / self-hosted runners. |
 
@@ -62,8 +66,19 @@ A sticky PR comment with a per-file table — paragraphs, hot paragraphs, and sc
 | `file-count` | Number of Markdown files scored. |
 | `failed-count` | Number of files above the active threshold. |
 | `max-score` | Highest file score percentage. |
+| `badge-json` | One-line Shields.io endpoint JSON derived from `max-score`. |
 | `threshold-failed` | `true` when `score-threshold` was set and exceeded. |
 | `comment-body-path` | Path to the generated Markdown comment body. |
+
+## README badge
+
+Set `badge-branch` to publish `patina-badge.json`, then point Shields.io at the raw JSON file:
+
+```md
+[![patina](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/<owner>/<repo>/patina-badge/patina-badge.json)](https://github.com/devswha/patina)
+```
+
+Publishing requires `contents: write` permission in the calling workflow. The badge JSON is generated from the same deterministic max score used by the PR comment and contains no per-visitor tracking.
 
 ## How it works
 
