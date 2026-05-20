@@ -1,12 +1,16 @@
 # patina-action
 
 <p align="center">
-  <img src="assets/patina-og.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="640">
+  <img src="assets/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="420">
 </p>
 
-GitHub Action for Patina prose hotspot scoring. It checks Markdown changed in a pull request, writes a sticky review comment, and can fail the job when a file crosses your score threshold.
+<p align="center"><b>Score AI-sounding prose in your pull requests, before it ships.</b></p>
 
-## Usage
+This Action scores the Markdown a PR changes, posts the result as one sticky comment, and can fail the check when a file crosses your threshold.
+
+The number is Patina's deterministic prose hotspot score — the share of paragraphs flagged as editing hotspots. It runs offline: no model call, no API key. Korean, English, Chinese, and Japanese.
+
+## Quick start
 
 ```yaml
 name: Patina prose score
@@ -33,7 +37,9 @@ jobs:
           comment: true
 ```
 
-The Action uses `dorny/paths-filter@v4` to find changed Markdown files, runs the `patina-score` binary from `npx -p patina-cli@latest`, and updates a sticky PR comment via `peter-evans/create-or-update-comment@v5`.
+## What you get
+
+A sticky PR comment with a per-file table — paragraphs, hot paragraphs, and score — plus a job summary. When `score-threshold` is set, the check fails if any file goes over it. Leave it unset to keep the report advisory.
 
 ## Inputs
 
@@ -47,7 +53,7 @@ The Action uses `dorny/paths-filter@v4` to find changed Markdown files, runs the
 | `max-files` | `50` | Maximum Markdown files to score. |
 | `comment` | `true` | Create or update a sticky PR comment. |
 | `patina-package` | `patina-cli@latest` | npm package spec used by `npx`. |
-| `patina-bin` | unset | Local `patina-score` executable for tests/self-hosted runners. |
+| `patina-bin` | unset | Local `patina-score` executable for tests / self-hosted runners. |
 
 ## Outputs
 
@@ -59,6 +65,14 @@ The Action uses `dorny/paths-filter@v4` to find changed Markdown files, runs the
 | `threshold-failed` | `true` when `score-threshold` was set and exceeded. |
 | `comment-body-path` | Path to the generated Markdown comment body. |
 
-## Notes for forks
+## How it works
 
-For public repositories, GitHub limits `GITHUB_TOKEN` permissions on `pull_request` runs from forks. If comments are blocked, keep the score summary in the job output or run a carefully locked-down `pull_request_target` workflow.
+It finds changed Markdown with `dorny/paths-filter`, scores each file by running `patina-score` from `npx -p patina-cli@latest`, and upserts the sticky comment with `peter-evans/create-or-update-comment`. The score itself is deterministic and local — no model, no key.
+
+## Forks
+
+On public repos, GitHub limits `GITHUB_TOKEN` permissions for `pull_request` runs triggered from forks. If comments are blocked, the score still shows in the job summary; for inline comments on fork PRs, use a locked-down `pull_request_target` workflow.
+
+## License
+
+MIT. Part of [patina](https://github.com/devswha/patina).
