@@ -33,6 +33,10 @@ inputs:
     description: Create or update a sticky PR comment.
     required: false
     default: 'true'
+  badge-branch:
+    description: Optional branch where patina-badge.json is published for Shields.io endpoint badges.
+    required: false
+    default: ''
   patina-package:
     description: npm package spec used by npx.
     required: false
@@ -52,6 +56,9 @@ outputs:
   max-score:
     description: Highest score percentage across scored files.
     value: ${{ steps.score.outputs.max-score }}
+  badge-json:
+    description: Shields.io endpoint JSON for the highest scored file.
+    value: ${{ steps.score.outputs.badge-json }}
   threshold-failed:
     description: true when score-threshold was set and at least one file exceeded it.
     value: ${{ steps.score.outputs.threshold-failed }}
@@ -112,6 +119,37 @@ runs:
         comment-id: ${{ steps.find-comment.outputs.comment-id }}
         edit-mode: replace
         body-path: ${{ steps.score.outputs.comment-body-path }}
+
+
+    - name: Publish Patina badge JSON
+      if: ${{ inputs.badge-branch != '' }}
+      shell: bash
+      env:
+        BADGE_BRANCH: ${{ inputs.badge-branch }}
+        BADGE_JSON: ${{ steps.score.outputs.badge-json }}
+      run: |
+        set -euo pipefail
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        tmp="$(mktemp -d)"
+        cleanup() { git worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; }
+        trap cleanup EXIT
+        if git fetch origin "$BADGE_BRANCH" >/dev/null 2>&1; then
+          git worktree add --detach "$tmp" "origin/$BADGE_BRANCH"
+          git -C "$tmp" switch -C "$BADGE_BRANCH"
+        else
+          git worktree add --detach "$tmp"
+          git -C "$tmp" checkout --orphan "$BADGE_BRANCH"
+          git -C "$tmp" rm -rf . >/dev/null 2>&1 || true
+        fi
+        printf '%s\n' "$BADGE_JSON" > "$tmp/patina-badge.json"
+        git -C "$tmp" add patina-badge.json
+        if git -C "$tmp" diff --cached --quiet; then
+          echo "patina-action: badge JSON unchanged on $BADGE_BRANCH."
+          exit 0
+        fi
+        git -C "$tmp" commit -m "Update Patina badge JSON"
+        git -C "$tmp" push origin "HEAD:$BADGE_BRANCH"
 
     - name: Enforce score threshold
       if: ${{ steps.score.outputs.threshold-failed == 'true' }}

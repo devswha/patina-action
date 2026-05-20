@@ -107,6 +107,7 @@ function parseRows(report) {
 function finish({ report, rows, thresholdSet, activeThreshold, commandStatus }) {
   const failedRows = rows.filter((row) => row.score > activeThreshold);
   const maxScore = rows.reduce((max, row) => Math.max(max, row.score), 0);
+  const badgeJson = JSON.stringify(toBadgePayload(maxScore));
   const thresholdFailed = thresholdSet && failedRows.length > 0;
   const tempDir = mkdtempSync(resolve(tmpdir(), 'patina-action-'));
   const bodyPath = resolve(tempDir, 'comment.md');
@@ -119,7 +120,24 @@ function finish({ report, rows, thresholdSet, activeThreshold, commandStatus }) 
   writeOutput('file-count', String(rows.length));
   writeOutput('failed-count', String(failedRows.length));
   writeOutput('max-score', maxScore.toFixed(1));
+  writeOutput('badge-json', badgeJson);
   writeOutput('threshold-failed', thresholdFailed ? 'true' : 'false');
+}
+
+function toBadgePayload(maxScore) {
+  const { text, color } = badgeBand(maxScore);
+  return {
+    schemaVersion: 1,
+    label: 'patina',
+    message: `${Math.round(maxScore)}% · ${text}`,
+    color,
+  };
+}
+
+function badgeBand(maxScore) {
+  if (maxScore <= 30) return { text: 'human-ish', color: 'brightgreen' };
+  if (maxScore <= 50) return { text: 'mixed', color: 'yellow' };
+  return { text: 'ai-like', color: 'red' };
 }
 
 function buildCommentBody({ report, thresholdSet, activeThreshold, commandStatus }) {
